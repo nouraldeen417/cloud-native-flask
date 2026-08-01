@@ -5,5 +5,6 @@ terraform {
     container_name       = "tfstate"
     key                  = "flaskapp.tfstate"
     use_oidc             = true  # Authenticate using the GitHub OIDC token instead of access keys
+    use_azuread_auth     = true
   }
 }
