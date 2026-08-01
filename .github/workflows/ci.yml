@@ -14,12 +14,11 @@ env:
 jobs:
   build-flask-app-package:
     runs-on: ubuntu-latest
-    # Define an output so the final job knows exactly which tag was built
     outputs:
       image_tag: ${{ steps.image-tag.outputs.image_tag }}
     permissions:
+      id-token: write   # required for Azure OIDC
       contents: read
-      packages: write
 
     steps:
       - name: Check out repository
@@ -32,31 +31,46 @@ jobs:
           IMAGE_TAG="${TODAY}-${GITHUB_RUN_ID}"
           echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
         with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push flask-app Docker image
+      - name: Log in to ACR
+        run: az acr login --name $(echo ${{ vars.ACR_LOGIN_SERVER }} | cut -d'.' -f1)
+
+      - name: Build image (local only, not pushed yet)
+        uses: docker/build-push-action@v5
+        with:
+          context: src/flaskapp
+          push: false
+          load: true
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.FLASKAPP_IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.FLASKAPP_IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push image (only if scan passed)
         uses: docker/build-push-action@v5
         with:
           context: src/flaskapp
           push: true
-          tags: |
-            
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FLASKAPP_IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
+          tags: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.FLASKAPP_IMAGE_NAME }}:${{ steps.image-tag.outputs.image_tag }}
 
-  # --- NEW JOB: UPDATE GIT REPOSITORY ---
   update-k8s-manifests:
-    # This job only runs AFTER both images are successfully built and pushed
     needs: [build-flask-app-package]
     runs-on: ubuntu-latest
     permissions:
-      # CRITICAL: This allows the action to push commits back to your repo
-      contents: write 
-    
+      contents: write
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -64,20 +78,15 @@ jobs:
       - name: Update Kubernetes Manifests
         env:
           IMAGE_TAG: ${{ needs.build-flask-app-package.outputs.image_tag }}
-          DOCKER_USER: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
-          # Replace the Flask image tag in the deployment manifest
-          # (Ensure "manifests/deployment.yaml" matches your actual folder/file name)
-          sed -i "s|image: .*/${{ env.FLASKAPP_IMAGE_NAME }}:.*|image: ${DOCKER_USER}/${{ env.FLASKAPP_IMAGE_NAME }}:${IMAGE_TAG}|g" kubernetes/flask-deployment.yml
+          sed -i "s|image: .*/${{ env.FLASKAPP_IMAGE_NAME }}:.*|image: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.FLASKAPP_IMAGE_NAME }}:${IMAGE_TAG}|g" kubernetes/flask-deployment.yml
+
       - name: Commit and Push Changes
         env:
           IMAGE_TAG: ${{ needs.build-flask-app-package.outputs.image_tag }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          
           git add kubernetes/
-          
-          # The [skip ci] tag prevents this commit from accidentally triggering another GitHub Action loop
           git commit -m "Deploy: Update image tags to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
           git push

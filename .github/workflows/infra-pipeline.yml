@@ -107,4 +107,4 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run docker-build.yml --ref main
+          gh workflow run ci.yml --ref main
