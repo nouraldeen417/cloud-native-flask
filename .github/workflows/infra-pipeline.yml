@@ -100,15 +100,10 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-
-  trigger-app-pipeline:
-    needs: [apply]
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - name: Trigger app build pipeline
+      - name: Sync ACR login server to repo variable
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh workflow run ci.yml --ref main
+          ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
+          gh variable set ACR_LOGIN_SERVER --repo ${{ github.repository }} --body "$ACR_LOGIN_SERVER"
+
