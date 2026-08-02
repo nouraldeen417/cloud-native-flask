@@ -70,6 +70,10 @@ jobs:
     if: needs.plan.outputs.plan_exitcode == '2'   # 2 = changes present
     runs-on: ubuntu-latest
     environment: production   # <-- manual approval gate lives here
+    permissions:
+      contents: read
+      id-token: write
+      actions: write   # <-- required for gh variable set
     defaults:
       run:
         working-directory: terraform
