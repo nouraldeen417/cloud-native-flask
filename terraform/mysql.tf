@@ -9,6 +9,9 @@ resource "azurerm_mysql_flexible_server" "mysql" {
   storage {
     size_gb = var.mysql_storage_gb
   }
+  lifecycle {
+    ignore_changes = [zone]
+  }
   tags = var.tags
 }
 
