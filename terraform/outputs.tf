@@ -1,6 +1,6 @@
 output "resource_group_name" {
   description = "Name of the resource group"
-  value       = azurerm_resource_group.rg.name
+  value       = data.azurerm_resource_group.rg.name
 }
 
 output "acr_login_server" {
@@ -20,7 +20,7 @@ output "aks_cluster_name" {
 
 output "aks_kube_config_command" {
   description = "Run this to fetch kubeconfig locally"
-  value       = "az aks get-credentials --resource-group ${azurerm_resource_group.rg.name} --name ${azurerm_kubernetes_cluster.aks.name}"
+  value       = "az aks get-credentials --resource-group ${data.azurerm_resource_group.rg.name} --name ${azurerm_kubernetes_cluster.aks.name}"
 }
 
 output "aks_kubelet_identity_object_id" {

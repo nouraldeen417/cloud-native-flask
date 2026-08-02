@@ -1,7 +1,7 @@
 resource "azurerm_mysql_flexible_server" "mysql" {
   name                   = "mysql-${var.project_name}-${var.environment}"
-  resource_group_name    = azurerm_resource_group.rg.name
-  location               = azurerm_resource_group.rg.location
+  resource_group_name    = data.azurerm_resource_group.rg.name
+  location               = data.azurerm_resource_group.rg.location
   administrator_login    = var.mysql_admin_username
   administrator_password = var.mysql_admin_password
   sku_name               = var.mysql_sku_name
@@ -14,7 +14,7 @@ resource "azurerm_mysql_flexible_server" "mysql" {
 
 resource "azurerm_mysql_flexible_database" "app_db" {
   name                = var.mysql_database_name
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   server_name         = azurerm_mysql_flexible_server.mysql.name
   charset             = "utf8mb4"
   collation           = "utf8mb4_unicode_ci"
@@ -25,7 +25,7 @@ resource "azurerm_mysql_flexible_database" "app_db" {
 # This is the time-constrained tradeoff — see README note below.
 resource "azurerm_mysql_flexible_server_firewall_rule" "allow_azure_services" {
   name                = "AllowAzureServices"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   server_name         = azurerm_mysql_flexible_server.mysql.name
   start_ip_address    = "0.0.0.0"
   end_ip_address      = "0.0.0.0"
