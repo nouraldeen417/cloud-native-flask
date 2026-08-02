@@ -46,7 +46,7 @@ variable "acr_sku" {
 variable "aks_kubernetes_version" {
   description = "Kubernetes version for AKS"
   type        = string
-  default     = "1.29"
+  default     = "1.34.5"
 }
 
 variable "aks_node_count" {

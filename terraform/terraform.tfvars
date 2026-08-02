@@ -1,4 +1,4 @@
-location            = "eastus"
+location            = "westus3"
 project_name        = "flaskapp"
 environment         = "dev"
 resource_group_name = "rg-flaskapp-dev"
