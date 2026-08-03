@@ -20,10 +20,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ==========================================
-# Force the upgrade AFTER requirements are installed 
-# so they cannot be accidentally downgraded
+# Force the upgrade of ALL vulnerable background tools
+# AFTER requirements are installed 
 # ==========================================
-RUN pip install --no-cache-dir --upgrade pip wheel>=0.46.2 jaraco.context>=6.1.0
+RUN pip install --no-cache-dir --upgrade pip wheel>=0.46.2 jaraco.context>=6.1.0 setuptools>=78.1.1 msgpack>=1.2.1
 
 # Copy the application code
 COPY . /app
