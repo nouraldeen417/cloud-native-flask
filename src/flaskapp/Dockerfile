@@ -16,15 +16,14 @@ RUN apt-get update && apt-get install -y \
 # Copy the requirements file
 COPY requirements.txt .
 
-# ==========================================
-# THIS FIXES THE LAST 2 TRIVY VULNERABILITIES
-# ==========================================
-# Force the upgrade of vulnerable build dependencies before installing requirements
-RUN pip install --no-cache-dir --upgrade wheel>=0.46.2 jaraco.context>=6.1.0
-# ==========================================
-
-# Install application dependencies
+# Install application dependencies FIRST
 RUN pip install --no-cache-dir -r requirements.txt
+
+# ==========================================
+# Force the upgrade AFTER requirements are installed 
+# so they cannot be accidentally downgraded
+# ==========================================
+RUN pip install --no-cache-dir --upgrade pip wheel>=0.46.2 jaraco.context>=6.1.0
 
 # Copy the application code
 COPY . /app
