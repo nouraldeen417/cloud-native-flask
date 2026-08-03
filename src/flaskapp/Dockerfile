@@ -1,4 +1,4 @@
-# Use a modern, supported Python version to eliminate Trivy vulnerabilities
+# Use a modern, supported Python version
 FROM python:3.11-slim 
 
 # Create a non-root user and group
@@ -6,28 +6,30 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Install OS-level dependencies required to build the old MySQL Python packages
+# Install OS-level dependencies required to build legacy MySQL packages
 RUN apt-get update && apt-get install -y \
     pkg-config \
     default-libmysqlclient-dev \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file
 COPY requirements.txt .
 
 # ==========================================
-# THE FIX: ENFORCE CONSTRAINTS IN A SINGLE LAYER
+# 1. INSTALL REQUIREMENTS 
 # ==========================================
-# 1. Create a constraints file with the secure versions
-# 2. Upgrade pip
-# 3. Install requirements using the constraints file so vulnerable versions are never downloaded
-RUN echo "setuptools>=78.1.1" > constraints.txt && \
-    echo "msgpack>=1.2.1" >> constraints.txt && \
-    echo "wheel>=0.46.2" >> constraints.txt && \
-    echo "jaraco.context>=6.1.0" >> constraints.txt && \
-    pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -c constraints.txt -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ==========================================
+# 2. POST-INSTALL SECURITY OVERWRITE
+# ==========================================
+# Forcefully upgrade ALL flagged packages to their secure versions
+# as the final package-management step.
+RUN pip install --no-cache-dir --upgrade \
+    "setuptools>=83.0.0" \
+    "msgpack>=1.2.1" \
+    "wheel>=0.46.2" \
+    "jaraco.context>=6.1.0"
 # ==========================================
 
 # Copy the application code
