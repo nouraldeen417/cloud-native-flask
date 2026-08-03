@@ -108,7 +108,7 @@ variable "mysql_storage_gb" {
 variable "mysql_database_name" {
   description = "Name of the application database"
   type        = string
-  default     = "flaskapp"
+  default     = "BucketList"
 }
 
 /*--------------------------VNET---------------------------*/
