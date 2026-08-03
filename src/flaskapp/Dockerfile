@@ -16,14 +16,19 @@ RUN apt-get update && apt-get install -y \
 # Copy the requirements file
 COPY requirements.txt .
 
-# Install application dependencies FIRST
-RUN pip install --no-cache-dir -r requirements.txt
-
 # ==========================================
-# Force the upgrade of ALL vulnerable background tools
-# AFTER requirements are installed 
+# THE FIX: ENFORCE CONSTRAINTS IN A SINGLE LAYER
 # ==========================================
-RUN pip install --no-cache-dir --upgrade pip wheel>=0.46.2 jaraco.context>=6.1.0 setuptools>=78.1.1 msgpack>=1.2.1
+# 1. Create a constraints file with the secure versions
+# 2. Upgrade pip
+# 3. Install requirements using the constraints file so vulnerable versions are never downloaded
+RUN echo "setuptools>=78.1.1" > constraints.txt && \
+    echo "msgpack>=1.2.1" >> constraints.txt && \
+    echo "wheel>=0.46.2" >> constraints.txt && \
+    echo "jaraco.context>=6.1.0" >> constraints.txt && \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -c constraints.txt -r requirements.txt
+# ==========================================
 
 # Copy the application code
 COPY . /app
