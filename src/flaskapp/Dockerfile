@@ -6,6 +6,17 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
+# ==========================================
+# THIS IS THE FIX FOR THE PIP INSTALL ERROR
+# ==========================================
+# Install OS-level dependencies required to build the old MySQL Python packages
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    default-libmysqlclient-dev \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+# ==========================================
+
 # Copy the requirements file and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
