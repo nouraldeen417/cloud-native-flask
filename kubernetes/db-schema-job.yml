@@ -20,7 +20,7 @@ spec:
             - "mysql -h $MYSQL_DATABASE_HOST -u $MYSQL_DATABASE_USER -p$MYSQL_DATABASE_PASSWORD --ssl-mode=REQUIRED < /schema/schema.sql"
           envFrom:
             - configMapRef:
-                name: flask-config
+                name: db-schema
           env:
             - name: MYSQL_DATABASE_PASSWORD
               valueFrom:
