@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-schema-load
+  namespace: default
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: schema-loader
+          image: mysql:8.0
+          command:
+            - sh
+            - -c
+            - "mysql -h $MYSQL_DATABASE_HOST -u $MYSQL_DATABASE_USER -p$MYSQL_DATABASE_PASSWORD --ssl-mode=REQUIRED < /schema/schema.sql"
+          envFrom:
+            - configMapRef:
+                name: flask-config
+          env:
+            - name: MYSQL_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_DATABASE_PASSWORD
+          volumeMounts:
+            - name: schema-volume
+              mountPath: /schema
+      volumes:
+        - name: schema-volume
+          configMap:
+            name: db-schema

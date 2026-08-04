@@ -4,21 +4,27 @@
 -- defaults to DEFINER=CURRENT_USER, which works under the managed admin login.
 -- Also assumes the database already exists (created via Terraform's
 -- azurerm_mysql_flexible_database resource) rather than creating it here.
+--
+-- Made fully idempotent (IF NOT EXISTS / INSERT IGNORE / DROP...IF EXISTS
+-- before every CREATE PROCEDURE) since this runs as an Argo CD PreSync hook
+-- on every sync, not just the first deploy.
 
 USE BucketList;
 
-CREATE TABLE `tbl_user` (
+CREATE TABLE IF NOT EXISTS `tbl_user` (
   `user_id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_name` VARCHAR(45) NULL,
   `user_username` VARCHAR(45) NULL,
   `user_password` VARCHAR(45) NULL,
   PRIMARY KEY (`user_id`));
 
-INSERT INTO tbl_user
+INSERT IGNORE INTO tbl_user
+  (user_id, user_name, user_username, user_password)
 VALUES
-(10,'ahmed','ahmed','ahmed');
+  (10,'ahmed','ahmed','ahmed');
 
 
+DROP PROCEDURE IF EXISTS `sp_createUser`;
 DELIMITER $$
 CREATE PROCEDURE `sp_createUser`(
     IN p_name VARCHAR(20),
@@ -45,6 +51,7 @@ BEGIN
 END$$
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS `sp_validateLogin`;
 DELIMITER $$
 CREATE PROCEDURE `sp_validateLogin`(
     IN p_username VARCHAR(20)
@@ -55,7 +62,7 @@ END$$
 DELIMITER ;
 
 
-CREATE TABLE `tbl_wish` (
+CREATE TABLE IF NOT EXISTS `tbl_wish` (
   `wish_id` INT(11) NOT NULL AUTO_INCREMENT,
   `wish_title` VARCHAR(45) DEFAULT NULL,
   `wish_description` VARCHAR(5000) DEFAULT NULL,

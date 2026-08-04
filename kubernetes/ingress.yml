@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flask-app-ingress
+  namespace: default
+  annotations:
+    # If you are using the NGINX Ingress Controller, uncomment the line below:
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  # If your controller requires an ingressClassName (like 'nginx' or 'webapprouting.kubernetes.azure.com')
+  ingressClassName: nginx 
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: flask-service # Replace with your actual Service name
+                port:
+                  number: 80
