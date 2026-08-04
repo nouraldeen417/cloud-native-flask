@@ -3,6 +3,9 @@ kind: ConfigMap
 metadata:
   name: db-schema
   namespace: default
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/sync-wave: "-1"
 data:
   schema.sql: |
     -- Azure MySQL Flexible Server version.
