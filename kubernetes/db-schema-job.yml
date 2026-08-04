@@ -34,3 +34,4 @@ spec:
         - name: schema-volume
           configMap:
             name: db-schema
+            
