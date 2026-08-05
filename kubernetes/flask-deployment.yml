@@ -6,7 +6,7 @@ metadata:
   labels:
     app: flask
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: flask
@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: flask-app
-          image: flaskappacrdev.azurecr.io/flask-app:2026-08-04-30907346262
+          image: flaskappacrdev.azurecr.io/flask-app:2026-08-05-30995745494
           imagePullPolicy: Always
           ports:
             - containerPort: 5002

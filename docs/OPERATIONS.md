@@ -36,6 +36,10 @@ az ad app list --display-name "terraform-infra-github-oidc" --query "[0].appId" 
 az ad sp show --id <appId> --query id -o tsv           # object ID from client/app ID
 
 az ad app federated-credential list --id <appId>       # verify federated creds attached
+
+# List federated credentials including claims matching expressions (not visible via az ad app federated-credential list)
+OBJECT_ID=$(az ad app show --id <appId> --query id -o tsv)
+az rest --method get --url "https://graph.microsoft.com/beta/applications/${OBJECT_ID}/federatedIdentityCredentials"
 ```
 
 ## Key Vault — check/read secrets directly (admin/debug only)
@@ -44,11 +48,7 @@ az ad app federated-credential list --id <appId>       # verify federated creds 
 az keyvault secret list --vault-name kv-flaskapp-dev-xxxx -o table
 az keyvault secret show --vault-name kv-flaskapp-dev-xxxx --name mysql-admin-password --query value -o tsv
 ```
-az aks show \
-  --resource-group rg-flaskapp-dev \
-  --name aks-flaskapp-dev \
-  --query "addonProfiles.azureKeyvaultSecretsProvider.identity.clientId" \
-  -o tsv
+
 ## Kubernetes — verify secrets synced correctly
 
 ```bash
@@ -116,6 +116,7 @@ kubectl get svc -n ingress-nginx ingress-nginx-controller
 # look at EXTERNAL-IP column
 
 # If using the Azure DNS label annotation:
+#https://flaskapp-dev.westus2.cloudapp.azure.com/
 nslookup <project>-<env>.<region>.cloudapp.azure.com
 # e.g. nslookup flaskapp-dev.westus2.cloudapp.azure.com
 
