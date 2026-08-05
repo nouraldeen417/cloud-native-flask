@@ -1,8 +1,7 @@
 # Cloud-Native Flask on Azure Kubernetes Service
 
-A production-style, cloud-native deployment of a Flask application on Azure Kubernetes Service (AKS), built end-to-end with Terraform, GitHub Actions (OIDC), Argo CD, and Azure-managed services. Designed as a solo 10-day project demonstrating real infrastructure and DevOps practices rather than a simplified tutorial setup.
+A production-style, cloud-native deployment of a Flask application on Azure Kubernetes Service (AKS), built end-to-end with Terraform, GitHub Actions (OIDC), Argo CD, and Azure-managed services. 
 
----
 
 ## Table of Contents
 
@@ -43,7 +42,7 @@ A production-style, cloud-native deployment of a Flask application on Azure Kube
 - Secrets sourced from a vault, not plain Kubernetes Secrets
 - Supply-chain-aware CI (image vulnerability scanning, pinned actions)
 
-[DIAGRAM: high-level architecture — Azure resources, AKS internals, traffic flow]
+![\[DIAGRAM: high-level architecture — Azure resources, AKS internals, traffic flow\]](<images/project diagram.png>)
 
 ---
 
@@ -70,7 +69,7 @@ A production-style, cloud-native deployment of a Flask application on Azure Kube
 | Flask app | `default` | Application Deployment/Service |
 | Key Vault CSI driver | (AKS addon) | Syncs Key Vault secret → K8s Secret |
 
-[DIAGRAM: request flow — client → Azure DNS → LoadBalancer → ingress-nginx → Flask Service → Pod → MySQL Flexible Server]
+![alt text](images/connection-diagram.png)
 
 ---
 
@@ -109,7 +108,6 @@ A production-style, cloud-native deployment of a Flask application on Azure Kube
 |---|---|
 | `ACR_LOGIN_SERVER` | Auto-synced by the infra pipeline after every apply |
 
-[SCREENSHOT: GitHub Secrets/Variables settings page]
 
 ---
 
@@ -191,8 +189,6 @@ Secrets flow: `terraform.tfvars` (committed, non-sensitive) + `secrets.auto.tfva
 
 Full command reference: see [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
-[SCREENSHOT: successful infra pipeline run] · [SCREENSHOT: successful app pipeline run with Trivy pass]
-
 ---
 
 ## CI/CD Pipelines
@@ -203,7 +199,13 @@ Full command reference: see [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 **`infra-destroy.yml`** — manual-only (`workflow_dispatch`), requires typing `destroy` as confirmation plus the same environment approval gate as apply. Used for the region-migration/rebuild cycles during this project's development.
 
-[SCREENSHOT: pipeline dependency graph in GitHub Actions UI]
+<div align="center">
+
+[![Infrastructure Pipeline](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-pipeline.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-pipeline.yml)
+[![Application CI](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/ci.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/ci.yml)
+[![Destroy The Infrastructure](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-destroy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-destroy.yml)
+
+</div>
 
 ---
 
@@ -211,7 +213,7 @@ Full command reference: see [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
 
 Argo CD watches the `kubernetes/` folder on `main` and auto-syncs (prune + self-heal enabled). Two resources are `PreSync` hooks (schema ConfigMap at wave `-1`, schema-load Job at wave `0`) so the database schema is idempotently applied before every application sync — safe to re-run, no manual DB step required after initial setup.
 
-[SCREENSHOT: Argo CD UI showing synced application tree]
+![alt text](<images/argo ui.png>) ![alt text](<images/argo-2.png>)
 
 ---
 
@@ -227,7 +229,7 @@ Container Insights ships pod/container logs and metrics to the Log Analytics Wor
 
 Full step-by-step setup (queries, alert rule, dashboard): [`docs/MONITORING.md`](docs/MONITORING.md)
 
-[SCREENSHOT: Azure Monitor dashboard] · [SCREENSHOT: alert rule configuration]
+![alt text](images/dashboard-1.png) ![alt text](images/dashboard-2.png) ![alt text](images/dashboard-3.png) ![alt text](images/dashboard-4.png)
 
 ---
 
@@ -256,8 +258,6 @@ Honest notes on deliberate simplifications made under the project's time constra
 
 ## Screenshots
 
-[SCREENSHOT: running app — signup page]
-[SCREENSHOT: running app — wishlist view]
-[SCREENSHOT: kubectl get all -A output]
-[SCREENSHOT: Argo CD dashboard]
-[SCREENSHOT: Azure Monitor dashboard]
+![alt text](images/running-app.png) ![alt text](images/user-dashboard.png) ![alt text](images/dns.png) 
+
+<!-- ![alt text align="center"](images/argo-4.png) -->

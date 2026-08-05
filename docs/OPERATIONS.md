@@ -1,6 +1,8 @@
-# Cloud-Native Flask — Operations Cheat Sheet
+# Cloud-Native Flask — Operations Reference
 
-## Connect to AKS
+## Part 1: First-Time Cluster Bootstrap (do these in order)
+
+### 1. Connect to AKS
 
 ```bash
 az aks get-credentials --resource-group rg-flaskapp-dev --name aks-flaskapp-dev
@@ -8,7 +10,79 @@ kubectl get nodes
 kubectl cluster-info
 ```
 
-## Terraform outputs (run from terraform/ directory)
+### 2. Get the values needed to fill in `secret-provider-class.yml`
+
+```bash
+cd terraform
+terraform output -raw aks_key_vault_csi_client_id   # → userAssignedIdentityID
+terraform output -raw key_vault_name                # → keyvaultName
+terraform output -raw key_vault_tenant_id            # → tenantId
+```
+
+If the Terraform output for the CSI client ID doesn't exist yet, get it directly from Azure instead:
+```bash
+az aks show \
+  --resource-group rg-flaskapp-dev \
+  --name aks-flaskapp-dev \
+  --query "addonProfiles.azureKeyvaultSecretsProvider.identity.clientId" \
+  -o tsv
+```
+
+**Edit `secret-provider-class.yml` and paste the three real values in:**
+```yaml
+    userAssignedIdentityID: "<value from aks_key_vault_csi_client_id>"
+    keyvaultName: "<value from key_vault_name>"
+    tenantId: "<value from key_vault_tenant_id>"
+```
+These are identifiers, not secrets — safe as plain text in this file. It's kept **out of the Argo-synced folder** deliberately (see README's Architecture Decisions section) and applied manually, per the next step.
+
+### 3. Apply the SecretProviderClass manually
+
+```bash
+kubectl apply -f secret-provider-class.yml
+```
+
+Verify it's registered (the actual `mysql-secret` K8s Secret won't exist yet — it's created lazily once a pod mounts it):
+```bash
+kubectl get secretproviderclass -n default
+kubectl describe secretproviderclass mysql-password-spc -n default
+```
+
+### 4. Apply the Argo CD Application manifest
+
+```bash
+kubectl apply -f argocd-app.yaml
+```
+
+### 5. Confirm Argo CD is running and get the admin password
+
+```bash
+kubectl get pods -n argocd
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+### 6. Access the Argo CD UI
+
+```bash
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+```
+Open `https://localhost:8080` — log in as `admin` with the password from step 5.
+
+### 7. Confirm the app synced and the secret materialized
+
+```bash
+kubectl get application flask-app -n argocd
+kubectl get secret mysql-secret -n default          # should now exist, created once the Deployment's pod mounted the CSI volume
+kubectl get pods -n default
+```
+
+From here, everything in `kubernetes/` is managed by Argo CD automatically on every commit. The sections below are ongoing reference, not one-time setup.
+
+---
+
+## Part 2: Ongoing Reference Commands
+
+### Terraform outputs (run from terraform/ directory)
 
 ```bash
 terraform output                              # show everything
@@ -24,7 +98,7 @@ terraform output -raw aks_subnet_id
 terraform output -raw resource_group_name
 ```
 
-## Azure identity / role values (for federated credentials, RBAC, SecretProviderClass)
+### Azure identity / role values (for federated credentials, RBAC, SecretProviderClass)
 
 ```bash
 az account show --query id -o tsv                    # subscription ID
@@ -42,14 +116,14 @@ OBJECT_ID=$(az ad app show --id <appId> --query id -o tsv)
 az rest --method get --url "https://graph.microsoft.com/beta/applications/${OBJECT_ID}/federatedIdentityCredentials"
 ```
 
-## Key Vault — check/read secrets directly (admin/debug only)
+### Key Vault — check/read secrets directly (admin/debug only)
 
 ```bash
 az keyvault secret list --vault-name kv-flaskapp-dev-xxxx -o table
 az keyvault secret show --vault-name kv-flaskapp-dev-xxxx --name mysql-admin-password --query value -o tsv
 ```
 
-## Kubernetes — verify secrets synced correctly
+### Kubernetes — verify secrets synced correctly
 
 ```bash
 kubectl get secret mysql-secret -n default
@@ -58,7 +132,7 @@ kubectl get secretproviderclass -n default
 kubectl describe secretproviderclass mysql-password-spc -n default
 ```
 
-## Pods, deployments, general cluster state
+### Pods, deployments, general cluster state
 
 ```bash
 kubectl get pods -n default
@@ -71,7 +145,7 @@ kubectl get deployment flask-app -n default
 kubectl get events -n default --sort-by='.lastTimestamp'
 ```
 
-## Verify DB connectivity
+### Verify DB connectivity
 
 ```bash
 # From your local machine (needs temporary firewall rule first — see below)
@@ -95,28 +169,24 @@ az mysql flexible-server firewall-rule delete \
   --rule-name AllowMyIP --yes
 ```
 
-## Argo CD
+### Argo CD (ongoing)
 
 ```bash
 kubectl get pods -n argocd
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 kubectl port-forward svc/argocd-server -n argocd 8080:443
-# then open https://localhost:8080  (user: admin)
-
 kubectl get application -n argocd
 kubectl describe application flask-app -n argocd
 kubectl get application flask-app -n argocd -o jsonpath="{.status.sync.status}"
 kubectl get application flask-app -n argocd -o jsonpath="{.status.health.status}"
 ```
 
-## Ingress — get the public URL
+### Ingress — get the public URL
 
 ```bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller
 # look at EXTERNAL-IP column
 
 # If using the Azure DNS label annotation:
-#https://flaskapp-dev.westus2.cloudapp.azure.com/
 nslookup <project>-<env>.<region>.cloudapp.azure.com
 # e.g. nslookup flaskapp-dev.westus2.cloudapp.azure.com
 
@@ -124,21 +194,21 @@ kubectl get ingress -n default
 kubectl describe ingress <ingress-name> -n default
 ```
 
-## Full app smoke test
+### Full app smoke test
 
 ```bash
 curl -I http://<external-ip-or-dns-name>/
 curl http://<external-ip-or-dns-name>/showSignUp
 ```
 
-## GitHub — secrets/variables quick check
+### GitHub — secrets/variables quick check
 
 ```bash
 gh secret list
 gh variable list
 ```
 
-## Logs/Monitoring (Azure Monitor)
+### Logs/Monitoring (Azure Monitor) — quick CLI query
 
 ```bash
 terraform output -raw log_analytics_workspace_id
@@ -146,3 +216,5 @@ az monitor log-analytics query \
   --workspace $(cd terraform && terraform output -raw log_analytics_workspace_id) \
   --analytics-query "ContainerLog | take 20"
 ```
+
+> Full KQL query library, alert rule, and dashboard setup: see [`MONITORING.md`](MONITORING.md)
