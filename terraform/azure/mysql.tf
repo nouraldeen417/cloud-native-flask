@@ -55,14 +55,14 @@ resource "azurerm_monitor_diagnostic_setting" "mysql_diagnostics" {
 # the diagnostic setting above only ships logs *if* the server is generating them.
 resource "azurerm_mysql_flexible_server_configuration" "audit_log_enabled" {
   name                = "audit_log_enabled"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   server_name         = azurerm_mysql_flexible_server.mysql.name
   value               = "ON"
 }
 
 resource "azurerm_mysql_flexible_server_configuration" "audit_log_events" {
   name                = "audit_log_events"
-  resource_group_name = azurerm_resource_group.rg.name
+  resource_group_name = data.azurerm_resource_group.rg.name
   server_name         = azurerm_mysql_flexible_server.mysql.name
   value               = "CONNECTION,DML,DDL"
 }
