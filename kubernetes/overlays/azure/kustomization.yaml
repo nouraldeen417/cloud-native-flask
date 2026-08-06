@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../../base
-- flask-config.yml
+- flask-configMap.yml
 - ingress.yml
 - db-schema-configmap.yml
 - db-schema-job.yml
