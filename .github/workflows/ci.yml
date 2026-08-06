@@ -80,7 +80,9 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.build-flask-app-package.outputs.image_tag }}
         run: |
-          sed -i "s|image: .*/${{ env.FLASKAPP_IMAGE_NAME }}:.*|image: ${{ vars.ACR_LOGIN_SERVER }}/${{ env.FLASKAPP_IMAGE_NAME }}:${IMAGE_TAG}|g" kubernetes/flask-deployment.yml
+               cd kubernetes/overlays/azure
+               kustomize edit set image flask-app=${{ vars.ACR_LOGIN_SERVER }}/flask-app:${IMAGE_TAG}
+          # was: kubernetes/flask-deployment.yml
 
       - name: Commit and Push Changes
         env:

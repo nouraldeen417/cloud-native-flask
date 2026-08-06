@@ -75,7 +75,7 @@ A production-style, cloud-native deployment of a Flask application on Azure Kube
 
 ## Prerequisites
 
-> Full one-time setup commands (Service Principals, federated credentials, state backend, first apply, etc.) are documented separately in [`docs/PREREQUISITES.md`](docs/PREREQUISITES.md). This section is a summary of what's needed — see that file for exact commands.
+> Full one-time setup commands (Service Principals, federated credentials, state backend, first apply, etc.) are documented separately in [`docs/azure/PREREQUISITES.md`](docs/azure/PREREQUISITES.md). This section is a summary of what's needed — see that file for exact commands.
 
 **Local tooling:**
 - Azure CLI (`az`), logged in (`az login`) with Owner rights on the target subscription (or at least on the Resource Group once created)
@@ -148,7 +148,7 @@ A production-style, cloud-native deployment of a Flask application on Azure Kube
 │   ├── infra-pipeline.yml
 │   ├── infra-destroy.yml
 │   └── ci.yml
-├── docs/
+├── docs/azure/
 │   ├── PREREQUISITES.md          # one-time manual setup, all commands
 │   ├── OPERATIONS.md             # day-to-day command reference
 │   └── MONITORING.md             # KQL queries, alert rule, dashboard setup
@@ -177,7 +177,7 @@ Secrets flow: `terraform.tfvars` (committed, non-sensitive) + `secrets.auto.tfva
 ## Deployment Guide
 
 1. `az login`, create the Resource Group manually, import into Terraform state
-2. Create both Service Principals + federated credentials (see [`docs/PREREQUISITES.md`](docs/PREREQUISITES.md))
+2. Create both Service Principals + federated credentials (see [`docs/azure/PREREQUISITES.md`](docs/azure/PREREQUISITES.md))
 3. Populate GitHub secrets/variables
 4. Push to `terraform/**` on `main` → infra pipeline plans → manual approval → applies
 5. Infra pipeline syncs `ACR_LOGIN_SERVER`, then triggers the app pipeline
@@ -187,7 +187,7 @@ Secrets flow: `terraform.tfvars` (committed, non-sensitive) + `secrets.auto.tfva
 9. Apply the `SecretProviderClass` manually (see structure note above)
 10. Argo CD takes over — syncs Deployment, Service, ConfigMap, Ingress, schema-load hook
 
-Full command reference: see [`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+Full command reference: see [`docs/azure/OPERATIONS.md`](docs/azure/OPERATIONS.md).
 
 ---
 
@@ -227,7 +227,7 @@ Azure Database for MySQL Flexible Server, SSL-enforced. Firewall currently allow
 
 Container Insights ships pod/container logs and metrics to the Log Analytics Workspace automatically. Saved KQL queries cover failed container starts, high CPU/memory usage, and ingress 5xx error rates. One alert rule and one pinned dashboard are configured off these queries.
 
-Full step-by-step setup (queries, alert rule, dashboard): [`docs/MONITORING.md`](docs/MONITORING.md)
+Full step-by-step setup (queries, alert rule, dashboard): [`docs/azure/MONITORING.md`](docs/azure/MONITORING.md)
 
 ![alt text](images/dashboard-1.png) ![alt text](images/dashboard-2.png) ![alt text](images/dashboard-3.png) ![alt text](images/dashboard-4.png)
 

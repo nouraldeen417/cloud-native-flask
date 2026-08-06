@@ -15,7 +15,7 @@ az account show --query "{name:name, id:id}" -o table
 
 ## 1. Create the Resource Group
 
-Terraform manages everything *inside* this RG but not the RG itself (see [README's Architecture Decisions section](../README.md#architecture-decisions--tradeoffs) for why).
+Terraform manages everything *inside* this RG but not the RG itself (see [README's Architecture Decisions section](../../README.md#architecture-decisions--tradeoffs) for why).
 
 ```bash
 az group create --name rg-flaskapp-dev --location <region>
@@ -199,7 +199,7 @@ Also required: repo Settings → Actions → General → Workflow permissions �
 ## 6. Import the Resource Group into Terraform state
 
 ```bash
-cd terraform
+cd terraform/azure
 terraform init
 terraform import azurerm_resource_group.rg /subscriptions/<sub-id>/resourceGroups/rg-flaskapp-dev
 terraform plan   # should show 0 changes for the RG
@@ -238,7 +238,7 @@ paste the result into `terraform.tfvars` as `app_pipeline_sp_object_id`, then th
 ```bash
 az aks get-credentials --resource-group rg-flaskapp-dev --name aks-flaskapp-dev
 kubectl apply -f argocd-app.yaml
-kubectl apply -f secret-provider-class.yml   # kept out of the Argo-synced folder — see ../README.md
+kubectl apply -f secret-provider-class.yml   # kept out of the Argo-synced folder — see ../../README.md
 ```
 
 From here, Argo CD takes over syncing everything in `kubernetes/`.

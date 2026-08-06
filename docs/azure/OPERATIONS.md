@@ -13,7 +13,7 @@ kubectl cluster-info
 ### 2. Get the values needed to fill in `secret-provider-class.yml`
 
 ```bash
-cd terraform
+cd terraform/azure
 terraform output -raw aks_key_vault_csi_client_id   # → userAssignedIdentityID
 terraform output -raw key_vault_name                # → keyvaultName
 terraform output -raw key_vault_tenant_id            # → tenantId
@@ -149,7 +149,7 @@ kubectl get events -n default --sort-by='.lastTimestamp'
 
 ```bash
 # From your local machine (needs temporary firewall rule first — see below)
-mysql -h $(cd terraform && terraform output -raw mysql_fqdn) \
+mysql -h $(cd terraform/azure && terraform output -raw mysql_fqdn) \
   -u mysqladmin -p --ssl-mode=REQUIRED BucketList
 
 # From inside a running pod (no firewall changes needed, already Azure-internal)
@@ -213,7 +213,7 @@ gh variable list
 ```bash
 terraform output -raw log_analytics_workspace_id
 az monitor log-analytics query \
-  --workspace $(cd terraform && terraform output -raw log_analytics_workspace_id) \
+  --workspace $(cd terraform/azure && terraform output -raw log_analytics_workspace_id) \
   --analytics-query "ContainerLog | take 20"
 ```
 

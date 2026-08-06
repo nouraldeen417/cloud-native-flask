@@ -7,7 +7,7 @@ Step-by-step for setting up KQL queries, an alert rule, and a dashboard against 
 ## Prerequisites
 
 ```bash
-cd terraform
+cd  terraform/azure
 terraform output -raw log_analytics_workspace_id
 ```
 

@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/nouraldeen417/cloud-native-flask.git
     targetRevision: main
-    path: kubernetes
+    path: kubernetes/overlays/azure
   destination:
     server: https://kubernetes.default.svc
     namespace: default
