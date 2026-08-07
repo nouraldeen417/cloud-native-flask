@@ -32,6 +32,9 @@ resource "aws_eks_node_group" "main" {
 
   depends_on = [aws_eks_cluster.main]
 }
+data "aws_eks_cluster_auth" "main" {
+  name = aws_eks_cluster.main.name
+}
 resource "kubernetes_secret" "mysql_secret" {
   metadata {
     name      = "mysql-secret"
