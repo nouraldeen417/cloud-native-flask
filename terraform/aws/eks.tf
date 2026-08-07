@@ -38,6 +38,21 @@ resource "helm_release" "secrets_store_csi_driver" {
   chart      = "secrets-store-csi-driver"
   namespace  = "kube-system"
 
+  set {
+    name  = "syncSecret.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "tokenRequests[0].audience"
+    value = "sts.amazonaws.com"
+  }
+
+  set {
+    name  = "tokenRequests[0].expirationSeconds"
+    value = "86400"
+  }
+
   depends_on = [aws_eks_cluster.main]
 }
 
