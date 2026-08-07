@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/<owner>/<repo>.git
+    repoURL:  https://github.com/nouraldeen417/cloud-native-flask.git
     targetRevision: main
     path: kubernetes/overlays/aws
   destination:

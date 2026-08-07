@@ -2,10 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../../base
-- flask-configMap.yml
-- ingress.yml
-- db-schema-configmap.yml
-- db-schema-job.yml
 images:
 - name: flask-app
   newName: flaskappacrdev.azurecr.io/flask-app
@@ -17,4 +13,4 @@ patches:
     patch: |-
       - op: replace
         path: /data/MYSQL_DATABASE_HOST
-        value: <rds-endpoint-from-terraform-output>
+        value: rds-flaskapp-dev.c1iiq0mcmydl.us-east-1.rds.amazonaws.com
