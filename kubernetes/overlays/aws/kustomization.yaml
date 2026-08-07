@@ -5,12 +5,12 @@ resources:
 images:
 - name: flask-app
   newName: 905418200087.dkr.ecr.us-east-1.amazonaws.com/flaskapp-flask-app
-  newTag: 2026-08-07-31176873075
+  newTag: 2026-08-07-31180968226
 patches:
-  - target:
-      kind: ConfigMap
-      name: flask-config
-    patch: |-
-      - op: replace
-        path: /data/MYSQL_DATABASE_HOST
-        value: rds-flaskapp-dev.c1iiq0mcmydl.us-east-1.rds.amazonaws.com
+- patch: |-
+    - op: replace
+      path: /data/MYSQL_DATABASE_HOST
+      value: rds-flaskapp-dev.c1iiq0mcmydl.us-east-1.rds.amazonaws.com
+  target:
+    kind: ConfigMap
+    name: flask-config
