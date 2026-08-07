@@ -12,7 +12,7 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  TF_VAR_mysql_admin_password: ${{ secrets.AWS_MYSQL_ADMIN_PASSWORD }}
+  TF_VAR_mysql_admin_password: ${{ secrets.MYSQL_ADMIN_PASSWORD }}
 
 jobs:
   destroy:
