@@ -3,3 +3,7 @@ kind: Kustomization
 resources:
   - flask-deployment.yml
   - flask-svc.yml
+  - db-schema-configmap.yml
+  - db-schema-job.yml
+  - ingress.yml
+  - flask-configMap.yml

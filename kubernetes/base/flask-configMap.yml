@@ -8,5 +8,5 @@ metadata:
     argocd.argoproj.io/sync-wave: "-1"
 data:
   MYSQL_DATABASE_DB: BucketList        # matches mysql_database_name from terraform
-  MYSQL_DATABASE_HOST: mysql-flaskapp-dev.mysql.database.azure.com   # terraform output mysql_fqdn
+  MYSQL_DATABASE_HOST: placeholder-host  
   MYSQL_DATABASE_USER: mysqladmin    # matches var.mysql_admin_username

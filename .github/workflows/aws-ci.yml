@@ -1,0 +1,106 @@
+name: Build Docker Image Workflow (AWS)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+  workflow_run:
+    workflows: ["Terraform Infra Pipeline (AWS)"]
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  FLASKAPP_IMAGE_NAME: flask-app
+  AWS_REGION: us-east-1
+
+jobs:
+  build-flask-app-package:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: image-tag
+        run: |
+          TODAY="$(date -u +%Y-%m-%d)"
+          IMAGE_TAG="${TODAY}-${GITHUB_RUN_ID}"
+          echo "image_tag=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build image (local only, not pushed yet)
+        uses: docker/build-push-action@v5
+        with:
+          context: src/flaskapp
+          push: false
+          load: true
+          tags: ${{ vars.ECR_REPOSITORY_URL }}:${{ steps.image-tag.outputs.image_tag }}
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25  # v0.36.0
+        with:
+          image-ref: ${{ vars.ECR_REPOSITORY_URL }}:${{ steps.image-tag.outputs.image_tag }}
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+
+      - name: Push image (only if scan passed)
+        uses: docker/build-push-action@v5
+        with:
+          context: src/flaskapp
+          push: true
+          tags: ${{ vars.ECR_REPOSITORY_URL }}:${{ steps.image-tag.outputs.image_tag }}
+
+  update-k8s-manifests:
+    needs: [build-flask-app-package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tag in AWS overlay
+        env:
+          IMAGE_TAG: ${{ needs.build-flask-app-package.outputs.image_tag }}
+        run: |
+          cd kubernetes/overlays/aws
+          kustomize edit set image flask-app=${{ vars.ECR_REPOSITORY_URL }}:${IMAGE_TAG}
+
+      - name: Commit and Push Changes
+        env:
+          IMAGE_TAG: ${{ needs.build-flask-app-package.outputs.image_tag }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/overlays/aws
+          git commit -m "Deploy (AWS): Update image tag to ${IMAGE_TAG} [skip ci]" || echo "No changes to commit"
+          git push
