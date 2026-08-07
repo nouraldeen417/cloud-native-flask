@@ -1,3 +1,51 @@
+# apiVersion: batch/v1
+# kind: Job
+# metadata:
+#   name: db-schema-load
+#   namespace: default
+#   annotations:
+#     argocd.argoproj.io/hook: PreSync
+#     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+#     argocd.argoproj.io/sync-wave: "0"
+# spec:
+#   template:
+#     spec:
+#       restartPolicy: Never
+#       containers:
+#         - name: schema-loader
+#           image: mysql:8.0
+#           command:
+#             - sh
+#             - -c
+#             - "mysql -h $MYSQL_DATABASE_HOST -u $MYSQL_DATABASE_USER -p$MYSQL_DATABASE_PASSWORD --ssl-mode=REQUIRED < /schema/schema.sql"
+#           envFrom:
+#             - configMapRef:
+#                 name: flask-config
+#           env:
+#             - name: MYSQL_DATABASE_PASSWORD
+#               valueFrom:
+#                 secretKeyRef:
+#                   name: mysql-secret
+#                   key: MYSQL_DATABASE_PASSWORD
+#           volumeMounts:
+#             - name: schema-volume
+#               mountPath: /schema
+#             # 1. Mount the CSI volume to trigger the secret creation
+#             - name: secrets-store-inline
+#               mountPath: "/mnt/secrets-store"
+#               readOnly: true
+#       volumes:
+#         - name: schema-volume
+#           configMap:
+#             name: db-schema
+#         # 2. Tell the CSI driver which SecretProviderClass to use
+#         - name: secrets-store-inline
+#           csi:
+#             driver: secrets-store.csi.k8s.io
+#             readOnly: true
+#             volumeAttributes:
+#               secretProviderClass: "mysql-password-spc" # Ensure this matches the name in your terraform
+
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -17,7 +65,7 @@ spec:
           command:
             - sh
             - -c
-            - "mysql -h $MYSQL_DATABASE_HOST -u $MYSQL_DATABASE_USER -p$MYSQL_DATABASE_PASSWORD --ssl-mode=REQUIRED < /schema/schema.sql"
+            - "mysql -h $MYSQL_DATABASE_HOST -u $MYSQL_DATABASE_USER -p$MYSQL_DATABASE_PASSWORD < /schema/schema.sql"
           envFrom:
             - configMapRef:
                 name: flask-config
@@ -30,18 +78,9 @@ spec:
           volumeMounts:
             - name: schema-volume
               mountPath: /schema
-            # 1. Mount the CSI volume to trigger the secret creation
-            - name: secrets-store-inline
-              mountPath: "/mnt/secrets-store"
-              readOnly: true
       volumes:
         - name: schema-volume
           configMap:
             name: db-schema
-        # 2. Tell the CSI driver which SecretProviderClass to use
-        - name: secrets-store-inline
-          csi:
-            driver: secrets-store.csi.k8s.io
-            readOnly: true
-            volumeAttributes:
-              secretProviderClass: "mysql-password-spc" # Ensure this matches the name in your terraform
+        # removed: secrets-store CSI volume — no longer needed, Secret comes
+        # directly from Terraform (kubernetes_secret) instead of CSI sync
