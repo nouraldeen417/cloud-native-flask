@@ -4,8 +4,8 @@ resources:
 - ../../base
 images:
 - name: flask-app
-  newName: flaskappacrdev.azurecr.io/flask-app
-  newTag: 2026-08-06-31092864926
+  newName: 905418200087.dkr.ecr.us-east-1.amazonaws.com/flaskapp-flask-app
+  newTag: 2026-08-07-31176873075
 patches:
   - target:
       kind: ConfigMap
