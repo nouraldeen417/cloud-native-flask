@@ -32,38 +32,15 @@ resource "aws_eks_node_group" "main" {
 
   depends_on = [aws_eks_cluster.main]
 }
-resource "helm_release" "secrets_store_csi_driver" {
-  name       = "csi-secrets-store"
-  repository = "https://kubernetes-sigs.github.io/secrets-store-csi-driver/charts"
-  chart      = "secrets-store-csi-driver"
-  namespace  = "kube-system"
-
-  set {
-    name  = "syncSecret.enabled"
-    value = "true"
+resource "kubernetes_secret" "mysql_secret" {
+  metadata {
+    name      = "mysql-secret"
+    namespace = "default"
   }
-
-  set {
-    name  = "tokenRequests[0].audience"
-    value = "sts.amazonaws.com"
+  data = {
+    MYSQL_DATABASE_PASSWORD = var.mysql_admin_password
   }
-
-  set {
-    name  = "tokenRequests[0].expirationSeconds"
-    value = "86400"
-  }
+  type = "Opaque"
 
   depends_on = [aws_eks_cluster.main]
-}
-
-resource "helm_release" "aws_secrets_provider" {
-  name       = "secrets-provider-aws"
-  repository = "https://aws.github.io/secrets-store-csi-driver-provider-aws"
-  chart      = "secrets-store-csi-driver-provider-aws"
-  namespace  = "kube-system"
-  set {
-    name  = "secrets-store-csi-driver.install"
-    value = "false"
-  }
-  depends_on = [helm_release.secrets_store_csi_driver]
 }
