@@ -5,5 +5,15 @@ resource "helm_release" "cloudwatch_agent" {
   namespace        = "amazon-cloudwatch"
   create_namespace = true
 
+  set {
+    name  = "hostNetwork"
+    value = "true"
+  }
+
+  set {
+    name  = "clusterName"
+    value = aws_eks_cluster.main.name
+  }
+
   depends_on = [aws_eks_cluster.main]
 }
