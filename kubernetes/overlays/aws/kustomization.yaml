@@ -5,7 +5,7 @@ resources:
 images:
 - name: flask-app
   newName: 905418200087.dkr.ecr.us-east-1.amazonaws.com/flaskapp-flask-app
-  newTag: 2026-08-08-31257975569
+  newTag: 2026-08-08-31258214767
 patches:
 - patch: |-
     - op: replace
