@@ -36,11 +36,30 @@ resource "aws_db_instance" "mysql" {
   password               = var.mysql_admin_password
   db_subnet_group_name   = aws_db_subnet_group.mysql.name
   vpc_security_group_ids = [aws_security_group.mysql.id]
-
+  parameter_group_name = aws_db_parameter_group.mysql.name
   storage_encrypted               = true
   skip_final_snapshot             = true # dev project — no final snapshot needed on destroy
   backup_retention_period         = 1
   enabled_cloudwatch_logs_exports = ["audit", "error", "general", "slowquery"]
+
+  tags = var.tags
+}
+resource "aws_db_parameter_group" "mysql" {
+  name   = "pg-${var.project_name}-${var.environment}"
+  family = "mysql8.0"
+
+  parameter {
+    name  = "general_log"
+    value = "1"
+  }
+  parameter {
+    name  = "slow_query_log"
+    value = "1"
+  }
+  parameter {
+    name  = "long_query_time"
+    value = "1"
+  }
 
   tags = var.tags
 }
