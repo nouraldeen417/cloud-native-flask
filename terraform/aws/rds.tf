@@ -26,17 +26,17 @@ resource "aws_security_group" "mysql" {
 }
 
 resource "aws_db_instance" "mysql" {
-  identifier             = "rds-${var.project_name}-${var.environment}"
-  engine                 = "mysql"
-  engine_version         = var.rds_mysql_version
-  instance_class         = var.rds_instance_class
-  allocated_storage      = var.rds_storage_gb
-  db_name                = var.mysql_database_name
-  username               = var.mysql_admin_username
-  password               = var.mysql_admin_password
-  db_subnet_group_name   = aws_db_subnet_group.mysql.name
-  vpc_security_group_ids = [aws_security_group.mysql.id]
-  parameter_group_name = aws_db_parameter_group.mysql.name
+  identifier                      = "rds-${var.project_name}-${var.environment}"
+  engine                          = "mysql"
+  engine_version                  = var.rds_mysql_version
+  instance_class                  = var.rds_instance_class
+  allocated_storage               = var.rds_storage_gb
+  db_name                         = var.mysql_database_name
+  username                        = var.mysql_admin_username
+  password                        = var.mysql_admin_password
+  db_subnet_group_name            = aws_db_subnet_group.mysql.name
+  vpc_security_group_ids          = [aws_security_group.mysql.id]
+  parameter_group_name            = aws_db_parameter_group.mysql.name
   storage_encrypted               = true
   skip_final_snapshot             = true # dev project — no final snapshot needed on destroy
   backup_retention_period         = 1
