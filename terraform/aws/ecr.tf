@@ -5,7 +5,7 @@ resource "aws_ecr_repository" "flask_app" {
   # an image without incrementing the version tag each time.
 
   image_tag_mutability = "MUTABLE"
-
+  force_delete         = true
   image_scanning_configuration {
     # true: Automatically scans every pushed image for known vulnerabilities (CVEs) immediately.
     scan_on_push = true

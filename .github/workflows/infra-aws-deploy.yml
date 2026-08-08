@@ -108,3 +108,19 @@ jobs:
         run: |
           ECR_URL=$(terraform output -raw ecr_repository_url)
           gh variable set ECR_REPOSITORY_URL --repo ${{ github.repository }} --body "$ECR_URL"
+      
+      - name: Sync DB host and update Kustomize overlay
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
+        run: |
+          RDS_HOST=$(terraform output -raw rds_endpoint)
+
+          gh variable set MYSQL_HOST_AWS --repo ${{ github.repository }} --body "$RDS_HOST"
+
+          cd ../../kubernetes/overlays/aws
+          sed -i "s|value: .*rds.amazonaws.com|value: ${RDS_HOST}|" kustomization.yaml
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kustomization.yaml
+          git commit -m "Sync AWS DB host to ${RDS_HOST} [skip ci]" || echo "No changes to commit"
+          git push

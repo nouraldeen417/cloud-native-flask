@@ -111,3 +111,20 @@ jobs:
           ACR_LOGIN_SERVER=$(terraform output -raw acr_login_server)
           gh variable set ACR_LOGIN_SERVER --repo ${{ github.repository }} --body "$ACR_LOGIN_SERVER"
 
+      - name: Sync DB host and update Kustomize overlay
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_PAT }}
+        run: |
+          MYSQL_HOST=$(terraform output -raw mysql_fqdn)
+
+          # Sync to a repo variable for visibility/reference elsewhere
+          gh variable set MYSQL_HOST_AZURE --repo ${{ github.repository }} --body "$MYSQL_HOST"
+
+          # Update the actual manifest Argo CD reads from
+          cd ../../kubernetes/overlays/azure
+          sed -i "s|value: .*mysql.database.azure.com|value: ${MYSQL_HOST}|" kustomization.yaml
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add kustomization.yaml
+          git commit -m "Sync Azure DB host to ${MYSQL_HOST} [skip ci]" || echo "No changes to commit"
+          git push
