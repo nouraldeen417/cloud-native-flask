@@ -1,5 +1,6 @@
 resource "aws_secretsmanager_secret" "mysql_password" {
   name = "${var.project_name}-mysql-password-${var.environment}"
+  recovery_window_in_days = 0
   tags = var.tags
 }
 
