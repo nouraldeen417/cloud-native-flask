@@ -24,7 +24,7 @@ spec:
 
               mysql -h $MYSQL_DATABASE_HOST \
                     -u $MYSQL_DATABASE_USER \
-                    -p"$DB_PASS" \
+                    -p "$DB_PASS" \
                     $MYSQL_DATABASE_DB < /tmp/backup.sql
 
               echo "Restore complete."
