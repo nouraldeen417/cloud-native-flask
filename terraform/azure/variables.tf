@@ -141,3 +141,9 @@ variable "app_pipeline_client_id" {
   description = "Client ID of the app pipeline Service Principal (needs AcrPush on ACR)"
   type        = string
 }
+
+/*--------------------------DataBaseDisasterRecovery---------------------------*/
+variable "aws_lambda_function_url" {
+  description = "The public AWS Lambda Function URL that returns a pre-signed S3 upload URL"
+  type        = string
+}
