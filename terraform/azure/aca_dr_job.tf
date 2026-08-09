@@ -52,7 +52,7 @@ resource "azurerm_container_app_job" "mysql_s3_backup" {
           BACKUP_FILE="backup.sql.gz"
           mysqldump -h $DB_HOST \
                     -u $DB_USER \
-                    --ssl-mode=REQUIRED \
+                    --ssl \
                     --single-transaction \
                     --quick \
                     $DB_NAME | gzip > $BACKUP_FILE
