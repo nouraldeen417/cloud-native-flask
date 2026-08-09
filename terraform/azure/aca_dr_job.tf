@@ -1,8 +1,8 @@
 # Container App Environment required to host the job
 resource "azurerm_container_app_environment" "main" {
   name                = "cae-${var.project_name}-${var.environment}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.rg.name
 }
 
 # Container App Scheduled Job for Nightly MySQL DR Backups
