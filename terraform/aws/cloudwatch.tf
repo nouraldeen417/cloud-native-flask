@@ -11,6 +11,11 @@ resource "helm_release" "fluent_bit" {
   }
 
   set {
+    name  = "dnsPolicy"
+    value = "ClusterFirstWithHostNet"
+  }
+
+  set {
     name  = "cloudWatch.enabled"
     value = "true"
   }
