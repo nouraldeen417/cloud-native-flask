@@ -55,6 +55,7 @@ resource "azurerm_container_app_job" "mysql_s3_backup" {
                     --ssl \
                     --single-transaction \
                     --quick \
+                    --routines
                     $DB_NAME | gzip > $BACKUP_FILE
 
           # 4. Upload compressed backup directly to AWS S3 via HTTP PUT

@@ -19,7 +19,7 @@ spec:
               set -e
               apk add --no-cache mysql-client aws-cli gzip
 
-              aws s3 cp s3://dr-mysql-backups-905418200087/mysql-backups/backup_2026-08-09_19-28-25.sql.gz /tmp/backup.sql.gz
+              aws s3 cp s3://dr-mysql-backups-905418200087/mysql-backups/backup_2026-08-09_20-17-56.sql.gz /tmp/backup.sql.gz
               gunzip /tmp/backup.sql.gz
 
               mysql -h $MYSQL_DATABASE_HOST \
