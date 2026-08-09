@@ -13,3 +13,6 @@ output "rds_endpoint" {
 output "secrets_manager_secret_arn" {
   value = aws_secretsmanager_secret.mysql_password.arn
 }
+output "dashboard_url" {
+  value = "https://console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.flaskapp.dashboard_name}"
+}
