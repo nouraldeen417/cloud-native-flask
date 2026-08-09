@@ -5,7 +5,7 @@ resources:
 images:
 - name: flask-app
   newName: flaskappacrdev.azurecr.io/flask-app
-  newTag: 2026-08-09-31318591519
+  newTag: 2026-08-09-31327241264
 patches:
 - patch: |-
     - op: replace
