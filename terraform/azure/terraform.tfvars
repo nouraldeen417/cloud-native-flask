@@ -10,4 +10,5 @@ tags = {
 }
 
 # terraform.tfvars
-app_pipeline_client_id = "c46ac504-a1cf-40dc-9403-275d89cba615"
+app_pipeline_client_id  = "c46ac504-a1cf-40dc-9403-275d89cba615"
+aws_lambda_function_url = "https://hzctdtt6qzhpvsb2debvm7sfn40wcgjy.lambda-url.us-east-1.on.aws/"
