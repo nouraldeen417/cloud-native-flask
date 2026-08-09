@@ -5,12 +5,12 @@ resources:
 images:
 - name: flask-app
   newName: flaskappacrdev.azurecr.io/flask-app
-  newTag: 2026-08-06-31092864926
+  newTag: 2026-08-09-31318591519
 patches:
-  - target:
-      kind: ConfigMap
-      name: flask-config
-    patch: |-
-      - op: replace
-        path: /data/MYSQL_DATABASE_HOST
-        value: mysql-flaskapp-dev.mysql.database.azure.com
+- patch: |-
+    - op: replace
+      path: /data/MYSQL_DATABASE_HOST
+      value: mysql-flaskapp-dev.mysql.database.azure.com
+  target:
+    kind: ConfigMap
+    name: flask-config
