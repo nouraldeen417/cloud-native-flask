@@ -1,4 +1,4 @@
-name: Terraform Infra Pipeline
+name: Terraform Infra Pipeline (Azure)
 
 on:
   push:
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production   # <-- manual approval gate lives here
     permissions:
-      contents: read
+      contents: write
       id-token: write
       actions: write   # <-- required for gh variable set
     defaults:

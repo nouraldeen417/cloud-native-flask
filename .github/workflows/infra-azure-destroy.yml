@@ -1,4 +1,4 @@
-name: Terraform Infra Destroy
+name: Terraform Infra Destroy (Azure)
 
 on:
   workflow_dispatch:

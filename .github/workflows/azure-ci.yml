@@ -1,4 +1,4 @@
-name: Build Docker Image Workflow
+name: Build Docker Image Workflow (Azure)
 
 on:
   workflow_run:
