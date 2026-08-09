@@ -1,8 +1,9 @@
 # Container App Environment required to host the job
 resource "azurerm_container_app_environment" "main" {
-  name                = "cae-${var.project_name}-${var.environment}"
-  location            = var.location
-  resource_group_name = data.azurerm_resource_group.rg.name
+  name                       = "cae-${var.project_name}-${var.environment}"
+  location                   = var.location
+  resource_group_name        = data.azurerm_resource_group.rg.name
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.law.id
 }
 
 # Container App Scheduled Job for Nightly MySQL DR Backups
@@ -15,7 +16,7 @@ resource "azurerm_container_app_job" "mysql_s3_backup" {
   replica_retry_limit          = 1    # If it fails, retry exactly 1 time
   # Triggers every night at 2:00 AM UTC
   schedule_trigger_config {
-    cron_expression = "30 14 * * *"
+    cron_expression = "30 2 * * *"
     parallelism     = 1
   }
 
@@ -37,7 +38,7 @@ resource "azurerm_container_app_job" "mysql_s3_backup" {
         <<-EOF
           # 1. Install required minimal tools
           apk add --no-cache mysql-client curl jq gzip
-
+          export MYSQL_PWD="$DB_PASS"
           # 2. Query AWS Lambda for a short-lived pre-signed upload URL
           RESPONSE=$(curl -s "$LAMBDA_FUNCTION_URL")
           UPLOAD_URL=$(echo "$RESPONSE" | jq -r .upload_url)
@@ -51,7 +52,6 @@ resource "azurerm_container_app_job" "mysql_s3_backup" {
           BACKUP_FILE="backup.sql.gz"
           mysqldump -h $DB_HOST \
                     -u $DB_USER \
-                    -p"$DB_PASS" \
                     --ssl-mode=REQUIRED \
                     --single-transaction \
                     --quick \
