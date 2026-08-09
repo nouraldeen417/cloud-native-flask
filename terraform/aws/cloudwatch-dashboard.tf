@@ -39,7 +39,7 @@ resource "aws_cloudwatch_dashboard" "flaskapp" {
           ]
           period = 300
         }
-       },
+      },
       {
         type   = "metric"
         x      = 16
