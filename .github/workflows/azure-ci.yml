@@ -2,7 +2,7 @@ name: Build Docker Image Workflow (Azure)
 
 on:
   workflow_run:
-    workflows: ["Terraform Infra Pipeline"]
+    workflows: ["Terraform Infra Pipeline (Azure)"]
     types:
       - completed
     branches:
