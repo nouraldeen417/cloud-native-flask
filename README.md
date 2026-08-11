@@ -93,7 +93,7 @@ Flask Deployment + Service + Ingress + DB schema (idempotent, Argo PreSync hook)
 - **Ingress → Load Balancer** — same controller on both, deliberately, for consistency between the two overlays.
 - **DB network exposure** — AWS's security-group model allowed tighter scoping here than Azure's IP-range firewall model.
 
-A cross-cloud issue surfaced and resolved during DR restore testing is documented in [`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md).
+A cross-cloud issue surfaced and resolved during DR restore testing is documented in [`docs/DR/Disaster-Recovery.md`](docs/DR/Disaster-Recovery.md).
 
 ## Repository Structure
 
@@ -131,7 +131,7 @@ A cross-cloud issue surfaced and resolved during DR restore testing is documente
 | Day-to-day operational commands | [`docs/azure/OPERATIONS.md`](docs/azure/OPERATIONS.md) | [`docs/aws/OPERATIONS.md`](docs/aws/OPERATIONS.md) |
 | Observability setup (dashboards, queries, alerts) | [`docs/azure/MONITORING.md`](docs/azure/MONITORING.md) | [`docs/aws/MONITORING.md`](docs/aws/MONITORING.md) |
 
-**Cross-cloud:** [`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md) — disaster recovery design, security model, and fail-over procedure.
+**Cross-cloud:** [`docs/DR/Disaster-Recovery.md`](docs/DR/Disaster-Recovery.md) — disaster recovery design, security model, and fail-over procedure.
 
 ---
 
@@ -156,7 +156,7 @@ Both `ci*.yml` pipelines use `kustomize edit set image`, not `sed`, to patch the
 
 Nightly, Azure MySQL is backed up to a private, versioned S3 bucket — using a **presigned-URL pattern specifically so Azure never holds an AWS credential**. Restore into RDS runs as a Kubernetes Job entirely inside the EKS cluster's VPC — no public database access, no public bucket access, at any point in the flow.
 
-Full design, security rationale, prerequisites, and the exact restore procedure (including a real collation-mismatch bug found and fixed during testing): **[`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md)**
+Full design, security rationale, prerequisites, and the exact restore procedure (including a real collation-mismatch bug found and fixed during testing): **[`docs/DR/Disaster-Recovery.md`](docs/DR/Disaster-Recovery.md)**
 
 ---
 
