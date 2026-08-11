@@ -19,12 +19,12 @@ spec:
               set -e
               apk add --no-cache mysql-client aws-cli gzip
 
-              aws s3 cp s3://dr-mysql-backups-905418200087/mysql-backups/backup_2026-08-09_20-17-56.sql.gz /tmp/backup.sql.gz
+              aws s3 cp s3://dr-mysql-backups-905418200087/mysql-backups/backup_2026-08-09_20-37-47.sql.gz /tmp/backup.sql.gz
               gunzip /tmp/backup.sql.gz
 
               mysql -h $MYSQL_DATABASE_HOST \
                     -u $MYSQL_DATABASE_USER \
-                    -p "$DB_PASS" \
+                    -p"$DB_PASS" \
                     $MYSQL_DATABASE_DB < /tmp/backup.sql
 
               echo "Restore complete."

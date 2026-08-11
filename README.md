@@ -1,263 +1,184 @@
-# Cloud-Native Flask on Azure Kubernetes Service
+# Cloud-Native Flask — Multi-Cloud Kubernetes Deployment
 
-A production-style, cloud-native deployment of a Flask application on Azure Kubernetes Service (AKS), built end-to-end with Terraform, GitHub Actions (OIDC), Argo CD, and Azure-managed services. 
+A production-style Flask application deployed independently on Azure (AKS) and AWS (EKS), with infrastructure, delivery, and observability fully defined as code.
+## Pipeline Status
+
+| | Azure | AWS |
+|---|---|---|
+| **Infra** | [![Terraform Infra Pipeline](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-azure-deploy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-azure-deploy.yml) | [![Terraform Infra Pipeline (AWS)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-aws-deploy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-aws-deploy.yml) |
+| **Build & Deploy** | [![Build and Push Flask App to ACR](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/azure-ci.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/azure-ci.yml) | [![Build Docker Image Workflow (AWS)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/aws-ci.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/aws-ci.yml) |
+| **Destroy** | [![Terraform Infra Destroy](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-azure-destroy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-azure-destroy.yml) | [![Terraform Infra Destroy (AWS)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-aws-destroy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-aws-destroy.yml) |
+---
 
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
-- [Prerequisites](#prerequisites)
+- [Azure vs. AWS — Design Comparison](#azure-vs-aws--design-comparison)
 - [Repository Structure](#repository-structure)
-- [Identity & Security Model](#identity--security-model)
-- [Deployment Guide](#deployment-guide)
+- [Documentation Index](#documentation-index)
 - [CI/CD Pipelines](#cicd-pipelines)
-- [GitOps (Argo CD)](#gitops-argo-cd)
-- [Database](#database)
-- [Observability](#observability)
-- [Teardown](#teardown)
+- [Cross-Cloud Disaster Recovery](#cross-cloud-disaster-recovery)
 - [Architecture Decisions & Tradeoffs](#architecture-decisions--tradeoffs)
-- [Screenshots](#screenshots)
+- [Environment Notes](#environment-notes)
+- [Project Gallery ](SCREENSHOTS.md)  
 
 ---
 
 ## Overview
 
-**What this project deploys:**
-- A Flask web app (user signup/login, wishlist CRUD) — `src/`
-- Backing store: Azure Database for MySQL Flexible Server
-- Container platform: Azure Kubernetes Service (AKS)
-- Image registry: Azure Container Registry (ACR)
-- Secrets: Azure Key Vault, synced into the cluster via the Key Vault CSI driver
-- Continuous Delivery: Argo CD (GitOps, auto-sync from this repo)
-- Ingress: ingress-nginx, exposed via an Azure-provided public DNS name
-- Observability: Azure Monitor / Log Analytics (Container Insights)
-- IaC: Terraform, remote state in Azure Blob Storage with native locking
-- CI/CD: GitHub Actions, authenticated to Azure via OIDC (no stored credentials)
-
-**What it's meant to demonstrate:**
-- Infra/App pipeline separation with least-privilege identities
-- GitOps delivery instead of direct `kubectl apply`
-- Managed PaaS over in-cluster stateful services
-- Secrets sourced from a vault, not plain Kubernetes Secrets
-- Supply-chain-aware CI (image vulnerability scanning, pinned actions)
-
-![\[DIAGRAM: high-level architecture — Azure resources, AKS internals, traffic flow\]](<images/project diagram.png>)
-
+**What's deployed, on both clouds:**
+- Flask web app (user signup/login, wishlist CRUD) — `src/flaskapp`
+- MySQL backing store (Azure MySQL Flexible Server / AWS RDS MySQL)
+- Managed Kubernetes (AKS / EKS), provisioned entirely via Terraform
+- Container registry (ACR / ECR), with Trivy vulnerability scanning gating every image push
+- GitOps delivery via Argo CD — one instance per cluster, each watching its own Kustomize overlay
+- Full observability: Azure Monitor + Log Analytics (KQL) on Azure; CloudWatch (Logs Insights + a fully Terraform-managed dashboard) on AWS
+- **Cross-cloud disaster recovery**: nightly Azure→S3 backups via a security-first presigned-URL pattern, with a documented, tested restore path into AWS RDS
 ---
+<div align="center" >
+<img src="images/Multi-Cloud Flask architecture diagram.png" width="80%" alt="Image 2"/>
+</div >
+
 
 ## Architecture
 
-**Azure resources (Terraform-managed):**
+**Shared application layer**, one Kustomize `base/`:
+```
+Flask Deployment + Service + Ingress + DB schema (idempotent, Argo PreSync hook)
+```
+<div width="100%">
+  <table>
+    <tr>
+          <td align="right"><img src="images/azure deployment.png" width="550" alt="Image 2"/></td>
+          <td align="left"><img src="images/aws deployemnt.png" width="550" alt="Image 1"/></td>
+    </tr>
+    <tr>
+      <td align="center"><b>Azure Architecture</b></td>
+      <td align="center"><b>AWS Architecture </b></td>
+    </tr>
+  </table>
+</div>
+**Per-cloud overlay** — only what's genuinely cloud-specific:
 
-| Resource | Purpose |
-|---|---|
-| Resource Group | Container for all project resources (manually pre-provisioned) |
-| Virtual Network + Subnet | Network boundary for AKS (Azure CNI) |
-| AKS Cluster | Kubernetes control plane + nodes |
-| Azure Container Registry | Stores built Flask images |
-| Azure Database for MySQL Flexible Server | Application database (SSL-enforced) |
-| Azure Key Vault | Stores the DB admin password |
-| Log Analytics Workspace | Central destination for logs/metrics |
-
-**Inside the cluster:**
-
-| Component | Namespace | Purpose |
+| | Azure overlay | AWS overlay |
 |---|---|---|
-| Argo CD | `argocd` | GitOps sync engine |
-| ingress-nginx | `ingress-nginx` | L7 routing, public entry point |
-| Flask app | `default` | Application Deployment/Service |
-| Key Vault CSI driver | (AKS addon) | Syncs Key Vault secret → K8s Secret |
+| Image registry | ACR | ECR |
+| DB host | Azure MySQL FQDN (patched via Kustomize) | RDS endpoint (patched via Kustomize) |
+| Secret delivery | Key Vault CSI (live sync) | Secrets Manager |
 
-![alt text](images/connection-diagram.png)
-
----
-
-## Prerequisites
-
-> Full one-time setup commands (Service Principals, federated credentials, state backend, first apply, etc.) are documented separately in [`docs/azure/PREREQUISITES.md`](docs/azure/PREREQUISITES.md). This section is a summary of what's needed — see that file for exact commands.
-
-**Local tooling:**
-- Azure CLI (`az`), logged in (`az login`) with Owner rights on the target subscription (or at least on the Resource Group once created)
-- Terraform >= 1.7.0
-- `kubectl`
-- GitHub CLI (`gh`), authenticated (`gh auth login`)
-- `mysql` client (for one-time schema verification / manual DB access)
-
-**Azure setup (one-time, manual — see [Identity & Security Model](#identity--security-model) for why):**
-1. A Resource Group, pre-created and imported into Terraform state
-2. Two Entra ID App Registrations (Service Principals), each with a federated (OIDC) credential trusting this repo:
-   - App pipeline SP — `AcrPush` on the ACR
-   - Infra pipeline SP — `Owner` scoped to the Resource Group only
-3. GitHub repo secrets/variables populated (see table below)
-
-**GitHub repo secrets:**
-
-| Secret | Purpose |
-|---|---|
-| `AZURE_CLIENT_ID` | App pipeline SP client ID |
-| `AZURE_INFRA_CLIENT_ID` | Infra pipeline SP client ID |
-| `AZURE_TENANT_ID` | Tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Subscription ID |
-| `MYSQL_ADMIN_PASSWORD` | DB admin password (used via `TF_VAR_`) |
-| `ADMIN_PAT` | Fine-grained PAT with repo Variables write access (used only to sync `ACR_LOGIN_SERVER`) |
-
-**GitHub repo variables:**
-
-| Variable | Purpose |
-|---|---|
-| `ACR_LOGIN_SERVER` | Auto-synced by the infra pipeline after every apply |
-
+[See full comparison below](#azure-vs-aws--design-comparison) for how each cloud's secret store is wired to the cluster.
 
 ---
+
+## Azure vs. AWS — Design Comparison
+
+> This project's AWS environment is AWS Academy Learner Lab, which restricts IAM to pre-provisioned roles and issues short-lived session credentials. A few choices below follow from that constraint.
+
+| Aspect | Azure | AWS |
+|---|---|---|
+| Secret delivery to pods | Key Vault CSI, live sync | Secrets Manager |
+| Cluster/node roles | Custom Service Principals, RG-scoped | Pre-provisioned `LabRole` / `LabEksClusterRole` |
+| State locking | Native Blob lease | Native S3 `use_lockfile` (TF ≥1.11) |
+| Log/metric shipping | Built-in AKS addon | Two Helm charts (CSI driver + CloudWatch agent/Fluent Bit) |
+| Dashboard-as-code | Manual (Portal) | Fully Terraform-managed |
+| Ingress → Load Balancer | ingress-nginx + Azure DNS label | ingress-nginx + AWS NLB annotation |
+| DB network exposure | Broad Azure-internal firewall rule | Security group scoped to EKS cluster only |
+
+**Notes on a few of these:**
+- **Secret delivery** — Azure's Key Vault CSI driver syncs live into the cluster; AWS's secret is provisioned into the cluster via Terraform rather than a live CSI sync.
+- **Log/metric shipping** — genuine platform difference: AKS bundles this as a first-party addon; EKS has no native equivalent, so it's installed as two separate Helm charts.
+- **Dashboard-as-code** — CloudWatch's dashboard JSON schema is materially more concise than Azure's ARM-template-style equivalent; Azure's closer match (`azurerm_application_insights_workbook`) wasn't adopted for this project.
+- **Ingress → Load Balancer** — same controller on both, deliberately, for consistency between the two overlays.
+- **DB network exposure** — AWS's security-group model allowed tighter scoping here than Azure's IP-range firewall model.
+
+A cross-cloud issue surfaced and resolved during DR restore testing is documented in [`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md).
 
 ## Repository Structure
 
 ```
 .
 ├── terraform/
-│   ├── backend.tf              # remote state config (Azure Blob)
-│   ├── providers.tf
-│   ├── variables.tf
-│   ├── terraform.tfvars        # non-sensitive config, committed
-│   ├── secrets.auto.tfvars     # DB password, gitignored
-│   ├── resource-group.tf
-│   ├── network.tf              # VNet + Subnet
-│   ├── log-analytics.tf
-│   ├── acr.tf
-│   ├── aks.tf
-│   ├── key-vault.tf
-│   ├── mysql.tf
-│   ├── rbac.tf                 # role assignments (ACR push, KV reader)
-│   ├── helm-argocd.tf
-│   ├── helm-ingress-nginx.tf
-│   └── outputs.tf
+│   ├── azure/           # RG (data source), VNet/Subnet, AKS, ACR, MySQL, Key Vault, RBAC, Argo CD + ingress-nginx (Helm), ACA DR backup job
+│   └── aws/              # VPC/NAT, EKS + node group, ECR, RDS, Secrets Manager, CloudWatch (dashboard + agents), Argo CD + ingress-nginx (Helm)
 ├── kubernetes/
-│   ├── flask-deployment.yml
-│   ├── flask-config.yml        # ConfigMap
-│   ├── flask-service.yml
-│   ├── flask-ingress.yml
-│   ├── storage-class.yml       # Azure Files CSI
-│   ├── db-schema-configmap.yml # PreSync hook, wave -1
-│   ├── db-schema-job.yml       # PreSync hook, wave 0
-│   └── secret-provider-class.yml   # applied manually — see note below
-├── src/
-│   └── flaskapp/                # application code
-├── argocd-app.yaml               # Argo CD Application manifest (applied once, manually)
-├── .github/workflows/
-│   ├── infra-pipeline.yml
-│   ├── infra-destroy.yml
-│   └── ci.yml
-├── docs/azure/
-│   ├── PREREQUISITES.md          # one-time manual setup, all commands
-│   ├── OPERATIONS.md             # day-to-day command reference
-│   └── MONITORING.md             # KQL queries, alert rule, dashboard setup
+│   ├── base/              # Deployment, Service, Ingress, DB schema ConfigMap + PreSync Job — shared by both clouds
+│   └── overlays/
+│       ├── azure/         # image ref, DB host patch, StorageClass
+│       └── aws/           # image ref, DB host patch, StorageClass
+├── src/flaskapp/          # application code
+├── DB_backup/             # Lambda presigned-URL function + K8s restore Job (DR)
+├── argocd/                # Argo CD Application manifests, one per cloud
+├── secret-key-vault-azure.yml   # applied manually — kept out of Argo's sync scope, see Architecture Decisions
+├── secret-key-vault-aws.yml     # not used at runtime — AWS uses a Terraform-provisioned Secret instead; kept for reference
+├── .github/workflows/     # 6 pipelines — infra + CI + destroy, ×2 clouds
+├── docs/
+│   ├── azure/              # PREREQUISITES.md, OPERATIONS.md, MONITORING.md
+│   ├── aws/                # PREREQUISITES.md, OPERATIONS.md, MONITORING.md
+│   └── DR.md                # cross-cloud disaster recovery — design, security model, procedure
+├── images/                  # screenshots and diagrams used in this README
 └── README.md
 ```
 
-> **Note:** `secret-provider-class.yml` is intentionally **not** synced by Argo CD and is applied manually (`kubectl apply -f`). It contains the Key Vault CSI addon's identity/tenant/vault identifiers — not secrets by Azure's classification, but kept out of the public repo as a deliberate defense-in-depth choice. See [Architecture Decisions & Tradeoffs](#architecture-decisions--tradeoffs).
-
-[DIAGRAM: repo structure ↔ pipeline ↔ Azure resource ownership map]
-
 ---
 
-## Identity & Security Model
+## Documentation Index
 
-Two separate GitHub-OIDC-authenticated identities, matching a real enterprise infra/app split:
+| Topic | Azure | AWS |
+|---|---|---|
+| One-time setup (identities, state backend, first apply) | [`docs/azure/PREREQUISITES.md`](docs/azure/PREREQUISITES.md) | [`docs/aws/PREREQUISITES.md`](docs/aws/PREREQUISITES.md) |
+| Day-to-day operational commands | [`docs/azure/OPERATIONS.md`](docs/azure/OPERATIONS.md) | [`docs/aws/OPERATIONS.md`](docs/aws/OPERATIONS.md) |
+| Observability setup (dashboards, queries, alerts) | [`docs/azure/MONITORING.md`](docs/azure/MONITORING.md) | [`docs/aws/MONITORING.md`](docs/aws/MONITORING.md) |
 
-- **Infra pipeline SP** — `Owner`, scoped to a single, manually pre-provisioned Resource Group only (not subscription-wide). Can manage resources and role assignments within that RG. Has zero Entra ID directory permissions (App Registration creation is a separate, manual, admin-performed step — Azure RBAC and Entra directory roles are different permission systems).
-- **App pipeline SP** — `AcrPush` only, scoped to the ACR. Cannot touch infrastructure.
-
-No static credentials anywhere — both pipelines authenticate via OIDC federated credentials, trust scoped to `repo:<org>/<repo>:ref:refs/heads/main`.
-
-Secrets flow: `terraform.tfvars` (committed, non-sensitive) + `secrets.auto.tfvars` (gitignored, DB password) → Terraform → Azure Key Vault → AKS Key Vault CSI driver → synced K8s Secret → Flask Deployment env var. No password ever touches the Kubernetes manifests directly.
-
----
-
-## Deployment Guide
-
-1. `az login`, create the Resource Group manually, import into Terraform state
-2. Create both Service Principals + federated credentials (see [`docs/azure/PREREQUISITES.md`](docs/azure/PREREQUISITES.md))
-3. Populate GitHub secrets/variables
-4. Push to `terraform/**` on `main` → infra pipeline plans → manual approval → applies
-5. Infra pipeline syncs `ACR_LOGIN_SERVER`, then triggers the app pipeline
-6. App pipeline builds, Trivy-scans, pushes the image, auto-commits updated manifests
-7. Connect to the cluster: `az aks get-credentials ...`
-8. Apply the Argo CD `Application` manifest once (`kubectl apply -f argocd-app.yaml`)
-9. Apply the `SecretProviderClass` manually (see structure note above)
-10. Argo CD takes over — syncs Deployment, Service, ConfigMap, Ingress, schema-load hook
-
-Full command reference: see [`docs/azure/OPERATIONS.md`](docs/azure/OPERATIONS.md).
+**Cross-cloud:** [`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md) — disaster recovery design, security model, and fail-over procedure.
 
 ---
 
 ## CI/CD Pipelines
 
-**`infra-pipeline.yml`** — triggers on `terraform/**` changes. `plan` job always runs; `apply` job runs only if the plan shows real changes, gated behind a GitHub Environment manual-approval step. On success, syncs `ACR_LOGIN_SERVER` and (via `workflow_run`) triggers `ci.yml`.
+Six pipelines total — infra, app build, and destroy, independently for each cloud:
 
-**`ci.yml`** — triggers on `src/**` changes, `workflow_run` (after successful infra apply), or manual `workflow_dispatch`. Builds the image, scans it with Trivy (pinned to a commit SHA, gating on CRITICAL/HIGH), pushes to ACR only if the scan passes, then auto-commits the updated image tag into the K8s manifests for Argo CD to pick up.
+| Pipeline | Trigger | Purpose |
+|---|---|---|
+| `infra-azure-deploy`  | push to `terraform/azure/**`, manual approval gate on apply | Terraform plan/apply, syncs `ACR_LOGIN_SERVER` + DB host to repo variables |
+| `infra-aws-deploy.yml` | push to `terraform/aws/**`, manual approval gate on apply | Same, for AWS — syncs `ECR_REPOSITORY_URL` + RDS endpoint |
+| `azure-ci.yml`  | push to `src/**`, or after successful Azure infra apply | Build → Trivy scan (gates on CRITICAL/HIGH) → push to ACR → patch Azure Kustomize overlay |
+| `aws-ci.yml` | push to `src/**`, or after successful AWS infra apply | Same, for AWS — push to ECR → patch AWS Kustomize overlay |
+| `infra-azure-destroy.yml` | manual only, typed confirmation + approval gate | Tears down Azure infra |
+| `infra-aws-destroy.yml` | manual only, typed confirmation + approval gate | Tears down AWS infra |
 
-**`infra-destroy.yml`** — manual-only (`workflow_dispatch`), requires typing `destroy` as confirmation plus the same environment approval gate as apply. Used for the region-migration/rebuild cycles during this project's development.
-
-<div align="center">
-
-[![Infrastructure Pipeline](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-pipeline.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-pipeline.yml)
-[![Application CI](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/ci.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/ci.yml)
-[![Destroy The Infrastructure](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-destroy.yml/badge.svg)](https://github.com/nouraldeen417/cloud-native-flask/actions/workflows/infra-destroy.yml)
-
-</div>
-
----
-
-## GitOps (Argo CD)
-
-Argo CD watches the `kubernetes/` folder on `main` and auto-syncs (prune + self-heal enabled). Two resources are `PreSync` hooks (schema ConfigMap at wave `-1`, schema-load Job at wave `0`) so the database schema is idempotently applied before every application sync — safe to re-run, no manual DB step required after initial setup.
-
-![alt text](<images/argo ui.png>) ![alt text](<images/argo-2.png>)
+Both `ci*.yml` pipelines use `kustomize edit set image`, not `sed`, to patch their respective overlay — each cloud's CI only ever touches its own overlay file, never the shared `base/` or the other cloud's overlay.
 
 ---
 
-## Database
+## Cross-Cloud Disaster Recovery
 
-Azure Database for MySQL Flexible Server, SSL-enforced. Firewall currently allows Azure-internal traffic broadly (`AllowAzureServices`) rather than being scoped to AKS's specific outbound IP — a time-constrained tradeoff, noted below. Schema is idempotent SQL (`CREATE TABLE IF NOT EXISTS`, `INSERT IGNORE`, `DROP PROCEDURE IF EXISTS` before every `CREATE PROCEDURE`), loaded automatically via the Argo CD PreSync hook.
+Nightly, Azure MySQL is backed up to a private, versioned S3 bucket — using a **presigned-URL pattern specifically so Azure never holds an AWS credential**. Restore into RDS runs as a Kubernetes Job entirely inside the EKS cluster's VPC — no public database access, no public bucket access, at any point in the flow.
 
----
-
-## Observability
-
-Container Insights ships pod/container logs and metrics to the Log Analytics Workspace automatically. Saved KQL queries cover failed container starts, high CPU/memory usage, and ingress 5xx error rates. One alert rule and one pinned dashboard are configured off these queries.
-
-Full step-by-step setup (queries, alert rule, dashboard): [`docs/azure/MONITORING.md`](docs/azure/MONITORING.md)
-
-![alt text](images/dashboard-1.png) ![alt text](images/dashboard-2.png) ![alt text](images/dashboard-3.png) ![alt text](images/dashboard-4.png)
-
----
-
-## Teardown
-
-```bash
-terraform destroy
-```
-(or trigger `infra-destroy.yml` manually). The Resource Group itself is **not** managed by Terraform (referenced as a data source) and is not destroyed by this — delete it separately with `az group delete` when fully done with the project.
+Full design, security rationale, prerequisites, and the exact restore procedure (including a real collation-mismatch bug found and fixed during testing): **[`docs/Disaster-Recovery.md`](docs/Disaster-Recovery.md)**
 
 ---
 
 ## Architecture Decisions & Tradeoffs
 
-Honest notes on deliberate simplifications made under the project's time constraints:
+Beyond the Azure-vs-AWS comparison table above:
 
-- **PaaS over StatefulSet** — managed MySQL instead of in-cluster database, avoiding Day 2 operational complexity.
-- **Local-then-CI Terraform** — bootstrapping steps (RG creation, first import) were run locally under an admin identity; ongoing changes flow through the infra pipeline.
-- **MySQL firewall scope** — allows Azure-internal traffic broadly rather than a tightly scoped rule or private endpoint, given the project's timeline.
-- **SecretProviderClass applied manually** — kept out of the public GitOps-synced folder despite containing non-secret identifiers, as a deliberate defense-in-depth choice.
-- **No automated schema-file management via Terraform** — schema loading lives in the Kubernetes/Argo CD layer instead, keeping infra and app-data concerns separate.
-- **Key Vault named with a random suffix** — avoids soft-delete name collisions across destroy/rebuild cycles during development.
-- **Trivy pinned to a commit SHA**, not a version tag — following the action maintainers' own post-incident hardening guidance.
+- **PaaS over StatefulSet, both clouds** — managed MySQL instead of in-cluster database, avoiding Day 2 operational complexity.
+- **Kustomize base + overlay, not duplicated manifests** — `base/` holds everything genuinely shared (Deployment, Service, Ingress, DB schema); overlays hold only real per-cloud differences (image reference, DB host, StorageClass). This was actively corrected once during the build after an early pass over-duplicated files that were 90% identical.
+- **Single NAT Gateway (AWS), not per-AZ** — cost-conscious tradeoff for this project's scale; production would use per-AZ NAT for full HA.
+- **RDS/MySQL parameter groups explicitly pin collation and enable slow/general/error logs** — server defaults aren't trustworthy across cloud providers, discovered directly via a real cross-cloud restore bug.
+- **Trivy pinned to a commit SHA, not a version tag** — following the action maintainers' own post-incident supply-chain hardening guidance.
+- **`SecretProviderClass` (Azure) applied manually, outside Argo's sync scope** — contains non-secret but still-not-public identifiers (vault name, tenant ID, identity client ID); kept out of the public repo as defense-in-depth beyond Azure's own sensitivity classification.
 
 ---
 
-## Screenshots
+## Environment Notes
 
-![alt text](images/running-app.png) ![alt text](images/user-dashboard.png) ![alt text](images/dns.png) 
+The AWS side of this project runs in **AWS Academy Learner Lab**, not a personal AWS account. Learner Lab imposes restricted IAM (no custom role/OIDC-provider creation beyond service-linked roles) and issues session-based, expiring credentials rather than persistent IAM users. Several architectural decisions in the comparison table above are direct, documented consequences of this constraint — not oversights. Full detail in [`docs/aws/PREREQUISITES.md`](docs/aws/PREREQUISITES.md).
 
-<!-- ![alt text align="center"](images/argo-4.png) -->
+## Screenshots 
+
+To keep this documentation clean, all visual evidence—including the live application UI, complete monitoring dashboards, Argo CD sync states, and the step-by-step Disaster Recovery verification—has been compiled into a dedicated gallery.
+
+📸 **[Click here to view the full Project Gallery (SCREENSHOTS.md)](SCREENSHOTS.md)**

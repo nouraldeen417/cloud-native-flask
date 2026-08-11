@@ -53,14 +53,14 @@ spec:
           # ==========================================
           # REQUIRED: TRIGGER THE CSI DRIVER
           # ==========================================
-          # volumeMounts:
-          #   - name: secrets-store-inline
-          #     mountPath: "/mnt/secrets-store"
-          #     readOnly: true
-      # volumes:
-      #   - name: secrets-store-inline
-      #     csi:
-      #       driver: secrets-store.csi.k8s.io
-      #       readOnly: true
-      #       volumeAttributes:
-      #         secretProviderClass: "mysql-password-spc"
+          volumeMounts:
+            - name: secrets-store-inline
+              mountPath: "/mnt/secrets-store"
+              readOnly: true
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: "mysql-password-spc"

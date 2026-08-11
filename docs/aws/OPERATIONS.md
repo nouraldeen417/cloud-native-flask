@@ -2,7 +2,7 @@
 
 > Before anything in this file: refresh Learner Lab credentials if it's been a while since your last session.
 > ```bash
-> ./refresh-aws-lab-creds.sh
+> ./aws-creditional.sh
 > aws sts get-caller-identity   # confirms credentials are actually valid before you proceed
 > ```
 
@@ -42,7 +42,7 @@ No identity/role field needed — pods inherit Secrets Manager read access via t
 ### 4. Apply the SecretProviderClass manually
 
 ```bash
-kubectl apply -f secret-provider-class-aws.yml
+kubectl apply -f secret-key-vault-aws.yml
 kubectl get secretproviderclass -n default
 kubectl describe secretproviderclass mysql-password-spc -n default
 ```
@@ -55,7 +55,7 @@ kubectl get pods -n argocd
 ```
 
 ```bash
-kubectl apply -f argocd-app-aws.yaml
+kubectl apply -f argocd/argocd-app-aws.yaml
 ```
 
 ### 6. Get the Argo CD admin password and access the UI
@@ -203,6 +203,30 @@ aws logs tail /aws/eks/eks-flaskapp-dev/cluster --follow
 ### Credential refresh (the recurring one)
 
 ```bash
-./refresh-aws-lab-creds.sh
+./aws-creditional.sh
 ```
 Run this whenever a pipeline or local `terraform`/`kubectl`/`aws` command starts failing with an auth error — almost always means the Learner Lab session expired.
+
+### Cross-cloud DR — restore from S3 backup
+
+Nightly backups run automatically via an Azure Container App Job (`azurerm_container_app_job.mysql_s3_backup`), uploading to S3 via a Lambda-issued presigned URL. To restore into RDS during a fail-over drill:
+
+```bash
+kubectl apply -f restore-job.yml   # edit the backup filename inside first — see docs/azure/backup dr notes
+kubectl logs -f job/mysql-restore-from-s3 -n default
+kubectl delete job mysql-restore-from-s3 -n default   # cleanup after
+```
+
+Runs entirely inside the cluster (no security group changes, no public IP allowlisting) — reuses the same RDS-to-EKS trust path already validated by the app and schema-load Job. See the root README's DR section for the full design and the collation-mismatch fix required after any cross-cloud restore.
+
+### Debugging pods that need AWS API access (S3, Secrets Manager, etc.)
+
+Any custom pod/Job calling AWS APIs directly (not through a chart with its own credential handling) needs the same fix already applied to `aws-cloudwatch-metrics` and `aws-for-fluent-bit`:
+```yaml
+spec:
+  template:
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet   # only needed if the pod also does in-cluster DNS lookups
+```
+Without `hostNetwork: true`, pod-level AWS SDK/CLI calls fail with `Unable to locate credentials` — EKS's default IMDS hop limit blocks metadata access from inside the pod network namespace. This bit both the CloudWatch agent and the DR restore Job during this project's build.
